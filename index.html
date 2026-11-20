@@ -560,42 +560,123 @@ function finalizar() {
 function baixarPDF() {
   try {
     var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
-    var W = 210, M = 18, y = 16;
-    var logo = document.querySelector('.arch img');
-    try {
-      var lw = 60, lh = lw * (logo.naturalHeight / logo.naturalWidth);
-      doc.addImage(logo.src, 'JPEG', (W - lw) / 2, y, lw, lh);
-      y += lh + 6;
-    } catch (e) { y += 6; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(47, 93, 58);
-    doc.text('Christmas Farm - Confirmacao de Servico', W / 2, y, { align: 'center' }); y += 10;
-    doc.setFontSize(10); doc.setTextColor(59, 42, 34);
+    var W = 210, H = 297, CX = 105, M = 24;
+    var PINE = [47, 93, 58], PINED = [35, 74, 45], BRICK = [181, 67, 47], WOOD = [59, 42, 34];
+    var GOLD = [227, 176, 75], GOLDL = [246, 226, 168], CREAM = [247, 239, 230], WHITE = [255, 253, 249], SAND = [230, 217, 198], GRAY = [140, 123, 110];
+    var y = 0, k;
+
+    function fill(c) { doc.setFillColor(c[0], c[1], c[2]); }
+    function stroke(c) { doc.setDrawColor(c[0], c[1], c[2]); }
+    function txt(c) { doc.setTextColor(c[0], c[1], c[2]); }
+    function glow(x, yy, r, c, op) {
+      try { doc.setGState(new doc.GState({ opacity: op })); } catch (e) {}
+      fill(c); doc.circle(x, yy, r, 'F');
+      try { doc.setGState(new doc.GState({ opacity: 1 })); } catch (e) {}
+    }
+    function fundo() { fill(CREAM); doc.rect(0, 0, W, H, 'F'); }
+    function cartao(yTop) {
+      fill(WHITE); stroke(SAND); doc.setLineWidth(0.3);
+      doc.roundedRect(12, yTop, W - 24, H - 12 - yTop, 2, 2, 'FD');
+      var n = Math.ceil((W - 24) / 6), i;
+      for (i = 0; i < n; i++) {
+        fill(i % 2 === 0 ? BRICK : PINE);
+        doc.rect(12 + i * 6, yTop, Math.min(6, W - 12 - (12 + i * 6)), 1.8, 'F');
+      }
+    }
+    function rodape() {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); txt(GRAY);
+      doc.text('Jessica Clicando Studio  |  Christmas Farm', CX, H - 6, { align: 'center' });
+    }
+    function novaPagina() {
+      rodape(); doc.addPage(); fundo(); cartao(10); y = 23;
+    }
+    function garland(yy) {
+      stroke(PINE); doc.setLineWidth(0.9); doc.line(M, yy, W - M, yy);
+      fill(BRICK);
+      for (var x = M + 2; x < W - M; x += 7) { doc.circle(x, yy, 0.8, 'F'); }
+    }
+    function titulo(t) {
+      if (y > H - 60) { novaPagina(); }
+      fill(BRICK); doc.circle(M + 1.2, y - 1.5, 1.3, 'F');
+      doc.setFont('times', 'bold'); doc.setFontSize(15); txt(PINE);
+      doc.text(t, M + 6, y);
+      y += 3; garland(y); y += 7;
+    }
+
+    /* ── página 1: fundo, telhadinho com luzes e cartão ── */
+    fundo();
+    var i, n = Math.ceil(W / 7);
+    for (i = 0; i < n; i++) {
+      fill((i % 2 === 0) ? PINE : PINED); doc.rect(i * 7, 0, 7, 8, 'F');
+      doc.circle(i * 7 + 3.5, 8, 3.5, 'F');
+    }
+    stroke(WOOD); doc.setLineWidth(0.2); doc.line(14, 15.5, W - 14, 15.5);
+    for (i = 0; i < 10; i++) {
+      var bx = 20 + i * ((W - 40) / 9);
+      glow(bx, 19.3, 3.6, GOLD, 0.22);
+      fill([107, 90, 76]); doc.rect(bx - 0.8, 15.5, 1.6, 1.4, 'F');
+      fill(GOLDL); doc.ellipse(bx, 19.3, 1.7, 2.2, 'F');
+    }
+    cartao(26); y = 39;
+
+    /* ── dados ── */
+    titulo('Dados do contratante');
     var linhas = [
-      ['Responsavel', dados.nome], ['CPF', dados.cpf], ['Celular', dados.telefone],
-      ['E-mail', dados.email], ['Crianca', dados.crianca], ['Plano', dados.plano],
-      ['Uso de imagem', dados.aut]
+      ['Responsável', dados.nome], ['CPF', dados.cpf], ['Celular', dados.telefone],
+      ['E-mail', dados.email], ['Criança', dados.crianca], ['Plano', dados.plano]
     ];
-    if (dados.obs) { linhas.push(['Observacao', dados.obs]); }
-    for (var i = 0; i < linhas.length; i++) {
-      doc.setFont('helvetica', 'bold'); doc.text(linhas[i][0] + ':', M, y);
-      doc.setFont('helvetica', 'normal');
-      var t = doc.splitTextToSize(String(linhas[i][1]), W - M * 2 - 32);
-      doc.text(t, M + 32, y); y += 5.5 * t.length;
+    if (dados.obs) { linhas.push(['Observação', dados.obs]); }
+    var altura = 7, tt = [];
+    for (k = 0; k < linhas.length; k++) {
+      tt[k] = doc.splitTextToSize(String(linhas[k][1]), W - M * 2 - 40);
+      altura += 5.2 * tt[k].length;
     }
-    y += 4;
+    if (y + altura > H - 20) { novaPagina(); }
+    fill(CREAM); doc.roundedRect(M - 3, y - 5, W - M * 2 + 6, altura, 2, 2, 'F');
+    for (k = 0; k < linhas.length; k++) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); txt(WOOD);
+      doc.text(linhas[k][0].toUpperCase(), M + 1, y);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+      doc.text(tt[k], M + 38, y);
+      y += 5.2 * tt[k].length;
+    }
+    y += 8;
+
+    /* ── autorização ── */
+    titulo('Autorização de uso de imagem');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); txt(BRICK);
+    var al = doc.splitTextToSize(dados.aut, W - M * 2);
+    doc.text(al, M, y); y += 5.2 * al.length + 1;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); txt(WOOD);
+    var tx = doc.splitTextToSize('Eu, ' + dados.nome + ', autorizo o estúdio Jessica Clicando Fotografia a utilizar as imagens produzidas durante o ensaio fotográfico para fins de divulgação em redes sociais e portfólio.', W - M * 2);
+    doc.text(tx, M, y); y += 4.6 * tx.length + 7;
+
+    /* ── cláusulas ── */
+    titulo('Cláusulas contratuais');
     for (var j = 0; j < CLAUSULAS.length; j++) {
-      var corpo = doc.splitTextToSize(semAcento(CLAUSULAS[j][1]), W - M * 2);
-      if (y + 8 + corpo.length * 5 > 270) { doc.addPage(); y = 20; }
-      doc.setFont('helvetica', 'bold'); doc.setTextColor(181, 67, 47);
-      doc.text((j + 1) + '. ' + semAcento(CLAUSULAS[j][0]), M, y); y += 5.5;
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(59, 42, 34);
-      doc.text(corpo, M, y); y += corpo.length * 5 + 4;
+      var corpo = doc.splitTextToSize(CLAUSULAS[j][1], W - M * 2 - 8);
+      var bloco = 7 + corpo.length * 4.5 + 3;
+      if (y + bloco > H - 18) { novaPagina(); }
+      fill(CREAM); doc.roundedRect(M - 3, y - 5, W - M * 2 + 6, bloco, 1.5, 1.5, 'F');
+      fill(PINE); doc.rect(M - 3, y - 5, 1.4, bloco, 'F');
+      doc.setFont('times', 'bold'); doc.setFontSize(12); txt(PINE);
+      doc.text((j + 1) + '. ' + CLAUSULAS[j][0], M + 3, y); y += 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); txt(WOOD);
+      doc.text(corpo, M + 3, y); y += corpo.length * 4.5 + 6.5;
     }
-    if (y > 225) { doc.addPage(); y = 20; }
-    y += 6;
-    doc.addImage(dados.assinatura, 'PNG', M, y, 70, 28);
-    y += 30; doc.line(M, y, M + 80, y); y += 5;
-    doc.setFontSize(9); doc.text(semAcento(dados.nome) + ' - ' + dados.data, M, y);
+
+    /* ── assinatura ── */
+    if (y > H - 58) { novaPagina(); }
+    y += 1;
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(9.5); txt(WOOD);
+    doc.text('O(a) contratante declara ter lido e concordado com todas as cláusulas acima.', M, y); y += 5;
+    doc.addImage(dados.assinatura, 'PNG', M, y, 60, 23);
+    y += 24;
+    stroke(WOOD); doc.setLineWidth(0.3); doc.line(M, y, M + 80, y); y += 5;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); txt(WOOD); doc.text(dados.nome, M, y); y += 5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); txt(GRAY);
+    doc.text('Assinado digitalmente em ' + dados.data, M, y);
+    rodape();
     doc.save('contrato-christmas-farm-' + semAcento(dados.crianca).replace(/\s+/g, '-').toLowerCase() + '.pdf');
   } catch (e) { alert('Não foi possível gerar o PDF: ' + e.message); }
 }
